@@ -1,0 +1,369 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="RoomAI — Intelligent Space Designer. Constraint-Based Spatial Optimizer for perfect room layouts.">
+    <title>RoomAI — Intelligent Space Designer</title>
+    <!-- Google Font: Inter -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <!-- Main CSS -->
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body class="theme-dark">
+    <!-- Header -->
+    <header class="app-header">
+        <div class="logo-area">
+            <svg class="logo-icon" viewBox="0 0 100 100" width="40" height="40" xmlns="http://www.w3.org/2000/svg">
+                <rect x="10" y="10" width="80" height="80" fill="none" stroke="currentColor" stroke-width="6" rx="8" />
+                <rect x="25" y="25" width="30" height="30" fill="currentColor" rx="4" />
+                <rect x="65" y="25" width="10" height="30" fill="currentColor" rx="2" />
+                <rect x="25" y="65" width="50" height="10" fill="currentColor" rx="2" />
+            </svg>
+            <div class="logo-text">
+                <h1>RoomAI</h1>
+                <p class="tagline">Constraint-Based Spatial Optimizer</p>
+            </div>
+        </div>
+        <button id="theme-toggle" class="btn-icon" aria-label="Toggle theme">
+            <!-- SVG Moon/Sun placeholder -->
+            <svg viewBox="0 0 24 24" width="24" height="24" stroke="currentColor" stroke-width="2" fill="none">
+                <circle cx="12" cy="12" r="5" />
+                <line x1="12" y1="1" x2="12" y2="3" />
+                <line x1="12" y1="21" x2="12" y2="23" />
+                <line x1="4.22" y1="4.22" x2="5.64" y2="5.64" />
+                <line x1="18.36" y1="18.36" x2="19.78" y2="19.78" />
+                <line x1="1" y1="12" x2="3" y2="12" />
+                <line x1="21" y1="12" x2="23" y2="12" />
+                <line x1="4.22" y1="19.78" x2="5.64" y2="18.36" />
+                <line x1="18.36" y1="5.64" x2="19.78" y2="4.22" />
+            </svg>
+        </button>
+    </header>
+
+    <!-- Main Content -->
+    <main class="app-main">
+        <!-- Left Panel: Input Form -->
+        <aside class="panel panel-left" aria-label="Room configuration panel">
+            <!-- Room Dimensions -->
+            <section class="section-room-dims">
+                <h3>Room Configuration</h3>
+                <div class="input-group">
+                    <label for="room-length">Length (ft)</label>
+                    <input type="number" id="room-length" min="6" max="30" value="16" step="0.5">
+                </div>
+                <div class="input-group">
+                    <label for="room-width">Width (ft)</label>
+                    <input type="number" id="room-width" min="6" max="30" value="12" step="0.5">
+                </div>
+                <div class="input-group">
+                    <label for="room-type">Room Type</label>
+                    <select id="room-type">
+                        <option value="bedroom">Bedroom</option>
+                        <option value="living-room">Living Room</option>
+                        <option value="office">Office</option>
+                        <option value="studio">Studio</option>
+                        <option value="dining-room">Dining Room</option>
+                    </select>
+                </div>
+            </section>
+
+            <!-- Doors -->
+            <section class="section-doors">
+                <h3>Doors</h3>
+                <div id="doors-container">
+                    <div class="door-entry form-row" data-door-id="1">
+                        <select class="wall-select" aria-label="Door wall">
+                            <option value="north">North</option>
+                            <option value="south">South</option>
+                            <option value="east">East</option>
+                            <option value="west">West</option>
+                        </select>
+                        <input type="number" class="pos-input" placeholder="Pos (ft)" value="5" min="0" step="0.5" aria-label="Door position">
+                        <input type="number" class="width-input" value="3" min="1.5" step="0.5" aria-label="Door width">
+                    </div>
+                </div>
+                <button id="add-door-btn" class="btn btn-secondary">Add Door</button>
+            </section>
+
+            <!-- Windows -->
+            <section class="section-windows">
+                <h3>Windows</h3>
+                <div id="windows-container">
+                    <div class="window-entry form-row" data-window-id="1">
+                        <select class="wall-select" aria-label="Window wall">
+                            <option value="north">North</option>
+                            <option value="south">South</option>
+                            <option value="east">East</option>
+                            <option value="west">West</option>
+                        </select>
+                        <input type="number" class="pos-input" placeholder="Pos (ft)" value="5" min="0" step="0.5" aria-label="Window position">
+                        <input type="number" class="width-input" value="4" min="1" step="0.5" aria-label="Window width">
+                    </div>
+                </div>
+                <button id="add-window-btn" class="btn btn-secondary">Add Window</button>
+            </section>
+
+            <!-- Furniture -->
+            <section class="section-furniture">
+                <h3>Furniture</h3>
+                <div class="furniture-grid">
+                    <!-- Furniture Items -->
+                    <label class="furniture-card" data-id="furn-bed-king" data-width="6.5" data-height="6.5" data-name="King Bed" data-icon="🛏️" data-tall="false">
+                        <input type="checkbox" id="furn-bed-king" class="furniture-checkbox">
+                        <span class="card-content">
+                            <span class="emoji">🛏️</span>
+                            <span class="name">King Bed</span>
+                            <span class="dims">6.5×6.5 ft</span>
+                        </span>
+                    </label>
+                    <label class="furniture-card" data-id="furn-bed-queen" data-width="5" data-height="6.5" data-name="Queen Bed" data-icon="🛏️" data-tall="false">
+                        <input type="checkbox" id="furn-bed-queen" class="furniture-checkbox">
+                        <span class="card-content">
+                            <span class="emoji">🛏️</span>
+                            <span class="name">Queen Bed</span>
+                            <span class="dims">5×6.5 ft</span>
+                        </span>
+                    </label>
+                    <label class="furniture-card" data-id="furn-bed-single" data-width="3.5" data-height="6.5" data-name="Single Bed" data-icon="🛏️" data-tall="false">
+                        <input type="checkbox" id="furn-bed-single" class="furniture-checkbox">
+                        <span class="card-content">
+                            <span class="emoji">🛏️</span>
+                            <span class="name">Single Bed</span>
+                            <span class="dims">3.5×6.5 ft</span>
+                        </span>
+                    </label>
+                    <label class="furniture-card" data-id="furn-desk" data-width="4" data-height="2" data-name="Desk" data-icon="🪑" data-tall="false">
+                        <input type="checkbox" id="furn-desk" class="furniture-checkbox">
+                        <span class="card-content">
+                            <span class="emoji">🪑</span>
+                            <span class="name">Desk</span>
+                            <span class="dims">2×4 ft</span>
+                        </span>
+                    </label>
+                    <label class="furniture-card" data-id="furn-office-chair" data-width="2" data-height="2" data-name="Office Chair" data-icon="🪑" data-tall="false">
+                        <input type="checkbox" id="furn-office-chair" class="furniture-checkbox">
+                        <span class="card-content">
+                            <span class="emoji">🪑</span>
+                            <span class="name">Office Chair</span>
+                            <span class="dims">2×2 ft</span>
+                        </span>
+                    </label>
+                    <label class="furniture-card" data-id="furn-sofa" data-width="7" data-height="3" data-name="Sofa" data-icon="🛋️" data-tall="false">
+                        <input type="checkbox" id="furn-sofa" class="furniture-checkbox">
+                        <span class="card-content">
+                            <span class="emoji">🛋️</span>
+                            <span class="name">Sofa</span>
+                            <span class="dims">3×7 ft</span>
+                        </span>
+                    </label>
+                    <label class="furniture-card" data-id="furn-loveseat" data-width="5" data-height="3" data-name="Loveseat" data-icon="🛋️" data-tall="false">
+                        <input type="checkbox" id="furn-loveseat" class="furniture-checkbox">
+                        <span class="card-content">
+                            <span class="emoji">🛋️</span>
+                            <span class="name">Loveseat</span>
+                            <span class="dims">3×5 ft</span>
+                        </span>
+                    </label>
+                    <label class="furniture-card" data-id="furn-armchair" data-width="3" data-height="3" data-name="Armchair" data-icon="🛋️" data-tall="false">
+                        <input type="checkbox" id="furn-armchair" class="furniture-checkbox">
+                        <span class="card-content">
+                            <span class="emoji">🛋️</span>
+                            <span class="name">Armchair</span>
+                            <span class="dims">3×3 ft</span>
+                        </span>
+                    </label>
+                    <label class="furniture-card" data-id="furn-tv-stand" data-width="4" data-height="1.5" data-name="TV Stand" data-icon="📺" data-tall="false">
+                        <input type="checkbox" id="furn-tv-stand" class="furniture-checkbox">
+                        <span class="card-content">
+                            <span class="emoji">📺</span>
+                            <span class="name">TV Stand</span>
+                            <span class="dims">1.5×4 ft</span>
+                        </span>
+                    </label>
+                    <label class="furniture-card" data-id="furn-bookshelf" data-width="4" data-height="1" data-name="Bookshelf" data-icon="🗄️" data-tall="true">
+                        <input type="checkbox" id="furn-bookshelf" class="furniture-checkbox">
+                        <span class="card-content">
+                            <span class="emoji">🗄️</span>
+                            <span class="name">Bookshelf</span>
+                            <span class="dims">1×4 ft</span>
+                        </span>
+                    </label>
+                    <label class="furniture-card" data-id="furn-wardrobe" data-width="5" data-height="2" data-name="Wardrobe" data-icon="🗄️" data-tall="true">
+                        <input type="checkbox" id="furn-wardrobe" class="furniture-checkbox">
+                        <span class="card-content">
+                            <span class="emoji">🗄️</span>
+                            <span class="name">Wardrobe</span>
+                            <span class="dims">2×5 ft</span>
+                        </span>
+                    </label>
+                    <label class="furniture-card" data-id="furn-dresser" data-width="4" data-height="1.5" data-name="Dresser" data-icon="🗄️" data-tall="false">
+                        <input type="checkbox" id="furn-dresser" class="furniture-checkbox">
+                        <span class="card-content">
+                            <span class="emoji">🗄️</span>
+                            <span class="name">Dresser</span>
+                            <span class="dims">1.5×4 ft</span>
+                        </span>
+                    </label>
+                    <label class="furniture-card" data-id="furn-dining-table" data-width="5" data-height="3.5" data-name="Dining Table" data-icon="🍽️" data-tall="false">
+                        <input type="checkbox" id="furn-dining-table" class="furniture-checkbox">
+                        <span class="card-content">
+                            <span class="emoji">🍽️</span>
+                            <span class="name">Dining Table</span>
+                            <span class="dims">3.5×5 ft</span>
+                        </span>
+                    </label>
+                    <label class="furniture-card" data-id="furn-dining-chair" data-width="1.5" data-height="1.5" data-name="Dining Chair" data-icon="🪑" data-tall="false">
+                        <input type="checkbox" id="furn-dining-chair" class="furniture-checkbox">
+                        <span class="card-content">
+                            <span class="emoji">🪑</span>
+                            <span class="name">Dining Chair</span>
+                            <span class="dims">1.5×1.5 ft</span>
+                        </span>
+                    </label>
+                    <label class="furniture-card" data-id="furn-plant" data-width="1.5" data-height="1.5" data-name="Plant" data-icon="🌱" data-tall="false">
+                        <input type="checkbox" id="furn-plant" class="furniture-checkbox">
+                        <span class="card-content">
+                            <span class="emoji">🌱</span>
+                            <span class="name">Plant</span>
+                            <span class="dims">1.5×1.5 ft</span>
+                        </span>
+                    </label>
+                    <label class="furniture-card" data-id="furn-floor-lamp" data-width="1" data-height="1" data-name="Floor Lamp" data-icon="💡" data-tall="true">
+                        <input type="checkbox" id="furn-floor-lamp" class="furniture-checkbox">
+                        <span class="card-content">
+                            <span class="emoji">💡</span>
+                            <span class="name">Floor Lamp</span>
+                            <span class="dims">1×1 ft</span>
+                        </span>
+                    </label>
+                    <label class="furniture-card" data-id="furn-nightstand" data-width="1.5" data-height="1.5" data-name="Nightstand" data-icon="🛏️" data-tall="false">
+                        <input type="checkbox" id="furn-nightstand" class="furniture-checkbox">
+                        <span class="card-content">
+                            <span class="emoji">🛏️</span>
+                            <span class="name">Nightstand</span>
+                            <span class="dims">1.5×1.5 ft</span>
+                        </span>
+                    </label>
+                    <label class="furniture-card" data-id="furn-coffee-table" data-width="4" data-height="2" data-name="Coffee Table" data-icon="🧺" data-tall="false">
+                        <input type="checkbox" id="furn-coffee-table" class="furniture-checkbox">
+                        <span class="card-content">
+                            <span class="emoji">🧺</span>
+                            <span class="name">Coffee Table</span>
+                            <span class="dims">2×4 ft</span>
+                        </span>
+                    </label>
+                </div>
+            </section>
+
+            <!-- Natural Language -->
+            <section class="section-nlp">
+                <h3>Or Describe Your Room</h3>
+                <textarea id="nl-input" placeholder="e.g., I need a 14x12 bedroom with a queen bed, desk, and bookshelf. Door on the south wall."></textarea>
+                <button id="parse-btn" class="btn btn-secondary">Parse Description</button>
+            </section>
+        </aside>
+
+        <!-- Center Panel: Canvas -->
+        <section class="panel panel-center" aria-label="Room canvas panel">
+            <div class="canvas-toolbar">
+                <button id="zoom-in-btn" class="btn-icon" aria-label="Zoom In">+</button>
+                <button id="zoom-out-btn" class="btn-icon" aria-label="Zoom Out">-</button>
+                <button id="reset-view-btn" class="btn-icon" aria-label="Reset View">Reset</button>
+                <button id="grid-toggle-btn" class="btn-icon active" aria-label="Toggle Grid">Grid</button>
+                <span id="canvas-dims-label" class="dims-label">16' × 12'</span>
+            </div>
+            <div class="canvas-container">
+                <canvas id="room-canvas"></canvas>
+            </div>
+            <div class="canvas-footer">
+                <p>Click or drag furniture from sidebar → room &bull; Drag to reposition &bull; Scroll to zoom</p>
+            </div>
+        </section>
+
+        <!-- Right Panel: Output and Stats -->
+        <aside class="panel panel-right" aria-label="Layout optimization panel">
+            <button id="generate-btn" class="btn btn-primary btn-generate">
+                ✨ Generate Optimal Layout
+            </button>
+
+            <section class="score-section hidden" id="score-section">
+                <h3>Layout Score</h3>
+                <div class="score-circle">
+                    <span id="score-value">0</span>
+                </div>
+                <p id="score-label">Flow &amp; Usability Score</p>
+                <ul id="score-breakdown" class="score-list">
+                    <li class="score-item">
+                        <span class="score-item-label">Floor utilization</span>
+                        <progress value="0" max="100" id="score-prog-floor"></progress>
+                        <span class="score-item-val" id="score-val-floor">0%</span>
+                    </li>
+                    <li class="score-item">
+                        <span class="score-item-label">Door clearance</span>
+                        <progress value="0" max="100" id="score-prog-door"></progress>
+                        <span class="score-item-val" id="score-val-door">0%</span>
+                    </li>
+                    <li class="score-item">
+                        <span class="score-item-label">Window access</span>
+                        <progress value="0" max="100" id="score-prog-window"></progress>
+                        <span class="score-item-val" id="score-val-window">0%</span>
+                    </li>
+                    <li class="score-item">
+                        <span class="score-item-label">Walkability</span>
+                        <progress value="0" max="100" id="score-prog-walk"></progress>
+                        <span class="score-item-val" id="score-val-walk">0%</span>
+                    </li>
+                    <li class="score-item">
+                        <span class="score-item-label">Wall alignment</span>
+                        <progress value="0" max="100" id="score-prog-wall"></progress>
+                        <span class="score-item-val" id="score-val-wall">0%</span>
+                    </li>
+                </ul>
+            </section>
+
+            <section class="reasoning-section hidden" id="reasoning-section">
+                <h3>Optimizer Reasoning</h3>
+                <div id="reasoning-traces" class="trace-container">
+                    <!-- Traces will be inserted here dynamically -->
+                </div>
+            </section>
+
+            <section class="toggle-section hidden" id="toggle-section">
+                <h3>Compare Layouts</h3>
+                <div class="toggle-control">
+                    <span>Naive</span>
+                    <label class="switch" aria-label="Toggle optimized layout">
+                        <input type="checkbox" id="layout-toggle" checked>
+                        <span class="slider round"></span>
+                    </label>
+                    <span>Optimized</span>
+                </div>
+                <div id="comparison-stats" class="comparison-stats">
+                    <!-- Stats will be populated dynamically -->
+                </div>
+            </section>
+        </aside>
+    </main>
+
+    <!-- Footer -->
+    <footer class="app-footer">
+        <p>Built with constraint-based spatial optimization <span class="version-badge">v1.0</span></p>
+    </footer>
+
+    <!-- Overlays -->
+    <div id="loading-overlay" class="loading-overlay hidden" aria-hidden="true">
+        <div class="spinner"></div>
+        <p>Optimizing layout...</p>
+    </div>
+
+    <div id="toast-container" class="toast-container" aria-live="polite"></div>
+
+    <!-- Scripts -->
+    <script src="layoutEngine.js"></script>
+    <script src="canvas.js"></script>
+    <script src="main.js"></script>
+</body>
+</html>
