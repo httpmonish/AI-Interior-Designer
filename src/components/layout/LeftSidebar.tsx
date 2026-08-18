@@ -47,19 +47,40 @@ export default function LeftSidebar() {
       </div>
 
       {/* Room selector */}
-      {rooms.length > 1 && (
-        <div style={{ padding: '8px 12px', borderBottom: '1px solid var(--border)' }}>
-          <select
-            className="input-field input-sm"
-            value={activeRoomId}
-            onChange={e => setActiveRoom(e.target.value)}
-          >
-            {rooms.map(r => (
-              <option key={r.id} value={r.id}>{r.name}</option>
-            ))}
-          </select>
-        </div>
-      )}
+      <div style={{ padding: '8px 12px', borderBottom: '1px solid var(--border)', display: 'flex', gap: 8 }}>
+        <select
+          className="input-field input-sm"
+          style={{ flex: 1 }}
+          value={activeRoomId}
+          onChange={e => setActiveRoom(e.target.value)}
+        >
+          {rooms.map(r => (
+            <option key={r.id} value={r.id}>{r.name}</option>
+          ))}
+        </select>
+        <button 
+          className="btn-secondary" 
+          style={{ padding: '0 8px' }}
+          onClick={() => {
+            const newRoom = {
+              id: `room-${Date.now()}`,
+              name: `Room ${rooms.length + 1}`,
+              type: 'bedroom' as const,
+              dimensions: { width: 300, length: 300, height: 280 },
+              position: { x: rooms[0]?.position.x + 100 || 0, y: 0, z: rooms[0]?.position.z + 100 || 0 },
+              doors: [{ id: `d-${Date.now()}`, wall: 'south' as const, position: 100, width: 90, height: 210, type: 'hinged' as const, swingDirection: 'inward' as const }],
+              windows: [],
+              floorMaterial: { id: `fm-${Date.now()}`, name: 'Wood', category: 'flooring' as const, color: '#C4A882', roughness: 0.7, metalness: 0 },
+              wallMaterial: { id: `wm-${Date.now()}`, name: 'White', category: 'walls' as const, color: '#FAF8F5', roughness: 0.9, metalness: 0 }
+            };
+            useRoomStore.getState().addRoom(newRoom);
+            useRoomStore.getState().setActiveRoom(newRoom.id);
+            setLeftPanel('room-setup');
+          }}
+        >
+          <Plus size={16} />
+        </button>
+      </div>
 
       {/* Panel content */}
       <div style={{ flex: 1, overflow: 'auto' }}>

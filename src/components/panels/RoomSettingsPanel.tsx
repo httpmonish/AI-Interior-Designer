@@ -74,6 +74,36 @@ export default function RoomSettingsPanel() {
           <input type="number" className="input-field input-sm" value={room.dimensions.height} onChange={e => handleDimChange('height', e.target.value)} />
         </div>
       </div>
+
+      <div>
+        <label className="form-label" style={{ marginBottom: 12 }}>Position (cm)</label>
+        <div style={{ display: 'flex', gap: 12 }}>
+          <div style={{ flex: 1 }}>
+            <label style={{ fontSize: 10, color: 'var(--text-muted)' }}>X Offset</label>
+            <input 
+              type="number" 
+              className="input-field input-sm" 
+              value={room.position.x} 
+              onChange={e => {
+                const val = parseInt(e.target.value, 10);
+                if (!isNaN(val)) updateRoom(room.id, { position: { ...room.position, x: val } });
+              }} 
+            />
+          </div>
+          <div style={{ flex: 1 }}>
+            <label style={{ fontSize: 10, color: 'var(--text-muted)' }}>Z Offset</label>
+            <input 
+              type="number" 
+              className="input-field input-sm" 
+              value={room.position.z} 
+              onChange={e => {
+                const val = parseInt(e.target.value, 10);
+                if (!isNaN(val)) updateRoom(room.id, { position: { ...room.position, z: val } });
+              }} 
+            />
+          </div>
+        </div>
+      </div>
     </div>
   );
 }

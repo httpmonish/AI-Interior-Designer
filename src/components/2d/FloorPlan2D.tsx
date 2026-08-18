@@ -8,28 +8,45 @@ export default function FloorPlan2D({ previewOnly = false }: { previewOnly?: boo
   const selectFurniture = useRoomStore(s => s.selectFurniture);
   const updateFurniture = useRoomStore(s => s.updateFurniture);
 
-  // Use active room or first room
-  const activeRoomId = useRoomStore(s => s.activeRoomId);
-  const room = rooms.find(r => r.id === activeRoomId) || rooms[0];
   const svgRef = useRef<SVGSVGElement>(null);
   const [draggingId, setDraggingId] = useState<string | null>(null);
 
-  const w = room ? room.dimensions.width : 0;
-  const l = room ? room.dimensions.length : 0;
+  // Calculate global bounding box for the entire house
+  const bounds = useMemo(() => {
+    if (rooms.length === 0) return { minX: 0, maxX: 400, minZ: 0, maxZ: 400, w: 400, h: 400 };
+    let minX = Infinity, maxX = -Infinity, minZ = Infinity, maxZ = -Infinity;
+    for (const r of rooms) {
+      minX = Math.min(minX, r.position.x);
+      maxX = Math.max(maxX, r.position.x + r.dimensions.width);
+      minZ = Math.min(minZ, r.position.z);
+      maxZ = Math.max(maxZ, r.position.z + r.dimensions.length);
+    }
+    return { 
+      minX, maxX, minZ, maxZ, 
+      w: Math.max(200, maxX - minX), 
+      h: Math.max(200, maxZ - minZ) 
+    };
+  }, [rooms]);
 
   const gridLines = useMemo(() => {
     const lines = [];
-    const step = 25; // 25cm grid as per screenshot
-    for (let x = step; x < w; x += step) {
-      lines.push(<line key={`vx-${x}`} x1={x} y1={0} x2={x} y2={l} stroke="rgba(0,0,0,0.05)" strokeWidth={1} />);
+    const step = 25; // 25cm grid
+    // Extend grid slightly beyond bounds
+    const startX = Math.floor((bounds.minX - 50) / step) * step;
+    const endX = Math.ceil((bounds.maxX + 50) / step) * step;
+    const startZ = Math.floor((bounds.minZ - 50) / step) * step;
+    const endZ = Math.ceil((bounds.maxZ + 50) / step) * step;
+
+    for (let x = startX; x <= endX; x += step) {
+      lines.push(<line key={`vx-${x}`} x1={x} y1={startZ} x2={x} y2={endZ} stroke="rgba(0,0,0,0.03)" strokeWidth={1} />);
     }
-    for (let y = step; y < l; y += step) {
-      lines.push(<line key={`vy-${y}`} x1={0} y1={y} x2={w} y2={y} stroke="rgba(0,0,0,0.05)" strokeWidth={1} />);
+    for (let z = startZ; z <= endZ; z += step) {
+      lines.push(<line key={`vz-${z}`} x1={startX} y1={z} x2={endX} y2={z} stroke="rgba(0,0,0,0.03)" strokeWidth={1} />);
     }
     return lines;
-  }, [w, l]);
+  }, [bounds]);
 
-  if (!room) return null;
+  if (rooms.length === 0) return null;
 
   const handlePointerMove = (e: React.PointerEvent) => {
     if (!draggingId || !svgRef.current) return;
@@ -40,19 +57,24 @@ export default function FloorPlan2D({ previewOnly = false }: { previewOnly?: boo
     if (!ctm) return;
     const svgP = pt.matrixTransform(ctm.inverse());
     
-    // Clamp to room visually (optional)
-    const clampedX = Math.max(0, Math.min(w, svgP.x));
-    const clampedZ = Math.max(0, Math.min(l, svgP.y));
-
     const item = furniture.find(f => f.id === draggingId);
     if (item) {
-      updateFurniture(draggingId, {
-        position: {
-          x: room.position.x + clampedX,
-          y: item.position.y,
-          z: room.position.z + clampedZ
-        }
-      });
+      const room = rooms.find(r => r.id === item.roomId);
+      if (room) {
+        // Clamp visually relative to its own room
+        const localX = svgP.x - room.position.x;
+        const localZ = svgP.y - room.position.z;
+        const clampedX = Math.max(0, Math.min(room.dimensions.width, localX));
+        const clampedZ = Math.max(0, Math.min(room.dimensions.length, localZ));
+
+        updateFurniture(draggingId, {
+          position: {
+            x: room.position.x + clampedX,
+            y: item.position.y,
+            z: room.position.z + clampedZ
+          }
+        });
+      }
     }
   };
 
@@ -70,78 +92,104 @@ export default function FloorPlan2D({ previewOnly = false }: { previewOnly?: boo
     }}>
       <svg
         ref={svgRef}
-        viewBox={`-20 -20 ${w + 40} ${l + 40}`}
+        viewBox={`${bounds.minX - 40} ${bounds.minZ - 40} ${bounds.w + 80} ${bounds.h + 80}`}
         style={{ width: '100%', height: '100%', maxHeight: previewOnly ? 'none' : '80vh', display: 'block', touchAction: 'none' }}
         preserveAspectRatio="xMidYMid meet"
         onPointerMove={!previewOnly ? handlePointerMove : undefined}
         onPointerUp={!previewOnly ? handlePointerUp : undefined}
         onPointerLeave={!previewOnly ? handlePointerUp : undefined}
       >
-        {/* Room background & Grid */}
-        <rect x={0} y={0} width={w} height={l} fill="white" stroke="var(--border)" strokeWidth={2} />
+        <defs>
+          <filter id="drop-shadow" x="-20%" y="-20%" width="140%" height="140%">
+            <feDropShadow dx="2" dy="4" stdDeviation="4" floodOpacity="0.15" />
+          </filter>
+        </defs>
+
+        {/* Global Grid */}
         {gridLines}
 
-        {/* Walls (thick outline) */}
-        <rect x={0} y={0} width={w} height={l} fill="none" stroke="var(--text-muted)" strokeWidth={6} />
+        {/* Render all rooms */}
+        {rooms.map(r => (
+          <g key={r.id} transform={`translate(${r.position.x}, ${r.position.z})`}>
+            {/* Room Floor */}
+            <rect x={0} y={0} width={r.dimensions.width} height={r.dimensions.length} fill="white" />
+            
+            {/* Thick Architectural Walls */}
+            <rect 
+              x={0} y={0} width={r.dimensions.width} height={r.dimensions.length} 
+              fill="none" stroke="#2C3E50" strokeWidth={6} strokeLinejoin="round" 
+            />
 
-        {/* Doors (white gap with arc) */}
-        {room.doors.map(d => {
-          let dx = 0, dy = 0, rot = 0;
-          if (d.wall === 'south') { dx = d.position; dy = l; rot = 0; }
-          if (d.wall === 'north') { dx = d.position; dy = 0; rot = 180; }
-          if (d.wall === 'east') { dx = w; dy = d.position; rot = -90; }
-          if (d.wall === 'west') { dx = 0; dy = d.position; rot = 90; }
-          
-          return (
-            <g key={d.id} transform={`translate(${dx}, ${dy}) rotate(${rot})`}>
-              {/* Cutout wall */}
-              <line x1={0} y1={0} x2={d.width} y2={0} stroke="white" strokeWidth={10} />
-              {/* Door swing */}
-              <path d={`M 0 0 A ${d.width} ${d.width} 0 0 1 ${d.width} ${-d.width} L 0 ${-d.width} Z`} fill="rgba(181,107,103,0.1)" stroke="var(--terracotta)" strokeWidth={2} />
-            </g>
-          );
-        })}
+            {/* Doors */}
+            {r.doors.map(d => {
+              let dx = 0, dy = 0, rot = 0;
+              if (d.wall === 'south') { dx = d.position; dy = r.dimensions.length; rot = 0; }
+              if (d.wall === 'north') { dx = d.position + d.width; dy = 0; rot = 180; }
+              if (d.wall === 'east') { dx = r.dimensions.width; dy = d.position; rot = -90; }
+              if (d.wall === 'west') { dx = 0; dy = d.position + d.width; rot = 90; }
+              
+              return (
+                <g key={d.id} transform={`translate(${dx}, ${dy}) rotate(${rot})`}>
+                  {/* Cutout wall to make it seamless */}
+                  <line x1={0} y1={0} x2={d.width} y2={0} stroke="white" strokeWidth={10} />
+                  {/* Door leaf */}
+                  <line x1={0} y1={0} x2={0} y2={-d.width} stroke="#2C3E50" strokeWidth={3} strokeLinecap="round" />
+                  {/* Door swing arc */}
+                  <path d={`M 0 ${-d.width} A ${d.width} ${d.width} 0 0 1 ${d.width} 0`} fill="none" stroke="#95A5A6" strokeWidth={1.5} strokeDasharray="4 4" />
+                </g>
+              );
+            })}
 
-        {/* Windows (blue gap) */}
-        {room.windows.map(wi => {
-          let wx = 0, wy = 0, rot = 0;
-          if (wi.wall === 'south') { wx = wi.position; wy = l; rot = 0; }
-          if (wi.wall === 'north') { wx = wi.position; wy = 0; rot = 0; }
-          if (wi.wall === 'east') { wx = w; wy = wi.position; rot = 90; }
-          if (wi.wall === 'west') { wx = 0; wy = wi.position; rot = 90; }
+            {/* Windows */}
+            {r.windows.map(wi => {
+              let wx = 0, wy = 0, rot = 0;
+              if (wi.wall === 'south') { wx = wi.position; wy = r.dimensions.length; rot = 0; }
+              if (wi.wall === 'north') { wx = wi.position; wy = 0; rot = 0; }
+              if (wi.wall === 'east') { wx = r.dimensions.width; wy = wi.position; rot = 90; }
+              if (wi.wall === 'west') { wx = 0; wy = wi.position; rot = 90; }
 
-          return (
-            <g key={wi.id} transform={`translate(${wx}, ${wy}) rotate(${rot})`}>
-              <line x1={0} y1={0} x2={wi.width} y2={0} stroke="#A5C8C6" strokeWidth={8} />
-            </g>
-          );
-        })}
+              return (
+                <g key={wi.id} transform={`translate(${wx}, ${wy}) rotate(${rot})`}>
+                  {/* Glass pane */}
+                  <line x1={0} y1={0} x2={wi.width} y2={0} stroke="#3498DB" strokeWidth={4} strokeLinecap="butt" />
+                  <line x1={0} y1={2} x2={wi.width} y2={2} stroke="white" strokeWidth={1.5} />
+                  <line x1={0} y1={-2} x2={wi.width} y2={-2} stroke="white" strokeWidth={1.5} />
+                </g>
+              );
+            })}
+          </g>
+        ))}
 
-        {/* Furniture */}
-        {furniture.filter(f => f.roomId === room.id).map(f => {
-          const localX = f.position.x - room.position.x;
-          const localZ = f.position.z - room.position.z;
+        {/* Render all furniture across all rooms */}
+        {furniture.map(f => {
           const isSel = f.id === selectedId && !previewOnly;
 
-          let fill = 'var(--accent-subtle)';
-          let stroke = 'var(--accent)';
-          let text = 'var(--text-primary)';
+          let fill = '#ECF0F1';
+          let stroke = '#BDC3C7';
+          let text = '#7F8C8D';
           
-          if (f.category === 'seating') { fill = '#B4C4B5'; stroke = '#687E69'; }
-          else if (f.category === 'tables') { fill = '#C9A991'; stroke = '#8F6E55'; }
-          else if (f.category === 'storage') { fill = '#9AA59B'; stroke = '#556356'; }
-          else if (f.category === 'tv-media') { fill = '#869588'; stroke = '#485649'; }
-          else if (f.category === 'lighting') { fill = '#D4A373'; stroke = '#A06D3E'; }
+          if (f.category === 'seating') { fill = '#D4E6F1'; stroke = '#7FB3D5'; text = '#2471A3'; }
+          else if (f.category === 'tables') { fill = '#FDEBD0'; stroke = '#F3C57B'; text = '#B9770E'; }
+          else if (f.category === 'storage') { fill = '#E8DAEF'; stroke = '#C39BD3'; text = '#76448A'; }
+          else if (f.category === 'tv-media') { fill = '#D5D8DC'; stroke = '#85929E'; text = '#2E4053'; }
+          else if (f.category === 'lighting') { fill = '#FCF3CF'; stroke = '#F4D03F'; text = '#9A7D0A'; }
+          else if (f.category === 'plants') { fill = '#D5F5E3'; stroke = '#7DCEA0'; text = '#1E8449'; }
+          else if (f.category === 'beds') { fill = '#EAECEE'; stroke = '#ABB2B9'; text = '#2E4053'; }
+          else if (f.category === 'kitchen') { fill = '#F2F4F4'; stroke = '#BFC9CA'; text = '#616A6B'; }
+          else if (f.category === 'bathroom') { fill = '#EBF5FB'; stroke = '#AED6F1'; text = '#2874A6'; }
 
           if (isSel) {
             stroke = 'var(--terracotta)';
-            fill = 'var(--terracotta-subtle)';
+            fill = '#FDF1F0';
+            text = 'var(--terracotta)';
           }
+
+          const showText = f.dimensions.width > 60 && f.dimensions.depth > 60;
 
           return (
             <g 
               key={f.id} 
-              transform={`translate(${localX}, ${localZ}) rotate(${f.rotation.y})`}
+              transform={`translate(${f.position.x}, ${f.position.z}) rotate(${f.rotation.y})`}
               onPointerDown={(e) => {
                 if (previewOnly) return;
                 e.stopPropagation();
@@ -150,6 +198,7 @@ export default function FloorPlan2D({ previewOnly = false }: { previewOnly?: boo
                 setDraggingId(f.id);
               }}
               style={{ cursor: previewOnly ? 'default' : (draggingId === f.id ? 'grabbing' : 'grab') }}
+              filter="url(#drop-shadow)"
             >
               <rect
                 x={-f.dimensions.width / 2}
@@ -159,17 +208,18 @@ export default function FloorPlan2D({ previewOnly = false }: { previewOnly?: boo
                 fill={fill}
                 stroke={stroke}
                 strokeWidth={2}
-                rx={8}
+                rx={6}
               />
-              {!previewOnly && (
+              {!previewOnly && showText && (
                 <text
                   x={0}
                   y={0}
                   textAnchor="middle"
                   alignmentBaseline="middle"
                   fill={text}
-                  fontSize={f.dimensions.width > 50 ? 12 : 8}
-                  fontWeight={500}
+                  fontSize={12}
+                  fontWeight={600}
+                  fontFamily="Inter, sans-serif"
                   pointerEvents="none"
                 >
                   {f.name}
